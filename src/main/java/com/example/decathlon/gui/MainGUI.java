@@ -23,6 +23,7 @@ public class MainGUI {
         new MainGUI().createAndShowGUI();
     }
 //Hejhej
+    // Hej from Elin
     private void createAndShowGUI() {
         JFrame frame = new JFrame("Track and Field Calculator");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
