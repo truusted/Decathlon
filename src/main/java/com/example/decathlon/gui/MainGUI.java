@@ -19,6 +19,8 @@ public class MainGUI {
     private JComboBox<String> disciplineBox;
     private JTextArea outputArea;
 
+//Andreas är här!
+
     public static void main(String[] args) {
         new MainGUI().createAndShowGUI();
     }
