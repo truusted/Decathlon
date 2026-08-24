@@ -22,7 +22,7 @@ public class MainGUI {
     public static void main(String[] args) {
         new MainGUI().createAndShowGUI();
     }
-
+//Hejhej
     private void createAndShowGUI() {
         JFrame frame = new JFrame("Track and Field Calculator");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
