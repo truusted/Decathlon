@@ -35,8 +35,13 @@ el('save').addEventListener('click', async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    const json = await res.json();
-    setMsg(`Saved: ${json.points} pts`);
+    if (!res.ok) {
+      const t = await res.text();
+      setError(t || 'Score failed');
+    } else {
+      const json = await res.json();
+      setMsg(`Saved: ${json.points} pts`);
+    }
     await renderStandings();
   } catch (e) {
     setError('Score failed');
@@ -64,11 +69,12 @@ async function renderStandings() {
 
     const rows = data.sort((a,b)=> (b.total||0)-(a.total||0))
       .map(r => `<tr>
+        <td>${r.place ?? ''}</td>
         <td>${escapeHtml(r.name)}</td>
-        <td>${r.scores?.["100m"] ?? ''}</td>
-        <td>${r.scores?.["longJump"] ?? ''}</td>
-        <td>${r.scores?.["shotPut"] ?? ''}</td>
-        <td>${r.scores?.["400m"] ?? ''}</td>
+        <td>${r.scores?.["100m"]?.points ?? ''}</td>
+        <td>${r.scores?.["longJump"]?.points ?? ''}</td>
+        <td>${r.scores?.["shotPut"]?.points ?? ''}</td>
+        <td>${r.scores?.["400m"]?.points ?? ''}</td>
         <td>${r.total ?? 0}</td>
       </tr>`).join('');
 
