@@ -29,9 +29,13 @@ public class ApiController {
     }
 
     @PostMapping("/score")
-    public Map<String,Integer> score(@RequestBody ScoreReq r) {
-        int pts = comp.score(r.name(), r.event(), r.raw());
-        return Map.of("points", pts);
+    public ResponseEntity<?> score(@RequestBody ScoreReq r) {
+        try {
+            int pts = comp.score(r.name(), r.event(), r.raw());
+            return ResponseEntity.ok(Map.of("points", pts));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
     }
 
     @GetMapping("/standings")

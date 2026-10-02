@@ -35,8 +35,13 @@ el('save').addEventListener('click', async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    const json = await res.json();
-    setMsg(`Saved: ${json.points} pts`);
+    if (!res.ok) {
+      const t = await res.text();
+      setError(t || 'Score failed');
+    } else {
+      const json = await res.json();
+      setMsg(`Saved: ${json.points} pts`);
+    }
     await renderStandings();
   } catch (e) {
     setError('Score failed');

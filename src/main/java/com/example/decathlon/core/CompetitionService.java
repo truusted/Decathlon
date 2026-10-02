@@ -36,8 +36,8 @@ public class CompetitionService {
     }
 
     public synchronized int score(String name, String eventId, double raw) {
-        Competitor c = competitors.computeIfAbsent(name, Competitor::new);
         int pts = scoring.score(eventId, raw);
+        Competitor c = competitors.computeIfAbsent(name, Competitor::new);
         c.results.put(eventId, new EventResultDto(raw, pts));
         return pts;
     }
