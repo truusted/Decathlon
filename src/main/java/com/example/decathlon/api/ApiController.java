@@ -2,6 +2,7 @@ package com.example.decathlon.api;
 
 import com.example.decathlon.core.CompetitionService;
 import com.example.decathlon.dto.ScoreReq;
+import com.example.decathlon.dto.StandingDto;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +35,7 @@ public class ApiController {
     }
 
     @GetMapping("/standings")
-    public List<Map<String,Object>> standings() { return comp.standings(); }
+    public List<StandingDto> standings() { return comp.standings(); }
 
     @GetMapping(value="/export.csv", produces = MediaType.TEXT_PLAIN_VALUE)
     public String export() { return comp.exportCsv(); }

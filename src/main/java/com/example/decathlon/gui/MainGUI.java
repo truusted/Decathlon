@@ -21,13 +21,15 @@ public class MainGUI {
 
     private static final int MAX_COMPETITORS = 40;
 
+    private record EventResult(double raw, int points) {}
+
     private final String[] disciplines = {
             "100m", "400m", "1500m", "110m Hurdles",
             "Long Jump", "High Jump", "Pole Vault",
             "Discus Throw", "Javelin Throw", "Shot Put"
     };
 
-    private final Map<String, Map<String, Integer>> competitors = new LinkedHashMap<>();
+    private final Map<String, Map<String, EventResult>> competitors = new LinkedHashMap<>();
 
     private JTextField nameField;
     private JTextField resultField;
@@ -102,10 +104,10 @@ public class MainGUI {
         return columns;
     }
 
-    private int totalFor(Map<String, Integer> scores) {
+    private int totalFor(Map<String, EventResult> scores) {
         int total = 0;
-        for (Integer value : scores.values()) {
-            total += value;
+        for (EventResult value : scores.values()) {
+            total += value.points();
         }
         return total;
     }
@@ -113,18 +115,18 @@ public class MainGUI {
     private void refreshStandings() {
         standingsModel.setRowCount(0);
 
-        List<Map.Entry<String, Map<String, Integer>>> entries = new java.util.ArrayList<>(competitors.entrySet());
+        List<Map.Entry<String, Map<String, EventResult>>> entries = new java.util.ArrayList<>(competitors.entrySet());
         entries.sort((a, b) -> totalFor(b.getValue()) - totalFor(a.getValue()));
 
         int rank = 1;
-        for (Map.Entry<String, Map<String, Integer>> entry : entries) {
-            Map<String, Integer> scores = entry.getValue();
+        for (Map.Entry<String, Map<String, EventResult>> entry : entries) {
+            Map<String, EventResult> scores = entry.getValue();
             Object[] row = new Object[disciplines.length + 3];
             row[0] = rank;
             row[1] = entry.getKey();
             for (int i = 0; i < disciplines.length; i++) {
-                Integer score = scores.get(disciplines[i]);
-                row[i + 2] = score == null ? "" : score;
+                EventResult result = scores.get(disciplines[i]);
+                row[i + 2] = result == null ? "" : result.points();
             }
             row[row.length - 1] = totalFor(scores);
             standingsModel.addRow(row);
@@ -192,7 +194,7 @@ public class MainGUI {
                 return;
             }
 
-            competitors.computeIfAbsent(name, k -> new LinkedHashMap<>()).put(discipline, score);
+            competitors.computeIfAbsent(name, k -> new LinkedHashMap<>()).put(discipline, new EventResult(result, score));
             refreshStandings();
             resultField.setText("");
             resultField.requestFocusInWindow();
@@ -220,23 +222,28 @@ public class MainGUI {
                 file = new File(file.getParentFile(), file.getName() + ".xlsx");
             }
 
-            Object[][] data = new Object[competitors.size() + 1][disciplines.length + 2];
-            String[] header = new String[disciplines.length + 2];
+            int columnCount = disciplines.length * 2 + 2;
+            Object[][] data = new Object[competitors.size() + 1][columnCount];
+            String[] header = new String[columnCount];
             header[0] = "Name";
-            for (int i = 0; i < disciplines.length; i++) {
-                header[i + 1] = disciplines[i];
+            int headerIndex = 1;
+            for (String discipline : disciplines) {
+                header[headerIndex++] = discipline + " Raw";
+                header[headerIndex++] = discipline + " Points";
             }
             header[header.length - 1] = "Total";
             data[0] = header;
 
             int rowIndex = 1;
-            for (Map.Entry<String, Map<String, Integer>> entry : competitors.entrySet()) {
-                Object[] row = new Object[disciplines.length + 2];
+            for (Map.Entry<String, Map<String, EventResult>> entry : competitors.entrySet()) {
+                Object[] row = new Object[columnCount];
                 row[0] = entry.getKey();
-                Map<String, Integer> scores = entry.getValue();
-                for (int i = 0; i < disciplines.length; i++) {
-                    Integer score = scores.get(disciplines[i]);
-                    row[i + 1] = score == null ? "" : score;
+                Map<String, EventResult> scores = entry.getValue();
+                int col = 1;
+                for (String discipline : disciplines) {
+                    EventResult result = scores.get(discipline);
+                    row[col++] = result == null ? "" : result.raw();
+                    row[col++] = result == null ? "" : result.points();
                 }
                 row[row.length - 1] = totalFor(scores);
                 data[rowIndex] = row;
@@ -273,18 +280,20 @@ public class MainGUI {
                 }
 
                 Object[] header = rows.get(0);
-                Map<Integer, String> columnDiscipline = new LinkedHashMap<>();
+                Map<String, Integer> rawColumns = new LinkedHashMap<>();
+                Map<String, Integer> pointsColumns = new LinkedHashMap<>();
                 for (int c = 1; c < header.length; c++) {
                     String columnName = String.valueOf(header[c]).trim();
                     for (String discipline : disciplines) {
-                        if (discipline.equals(columnName)) {
-                            columnDiscipline.put(c, discipline);
-                            break;
+                        if (columnName.equals(discipline + " Raw")) {
+                            rawColumns.put(discipline, c);
+                        } else if (columnName.equals(discipline + " Points")) {
+                            pointsColumns.put(discipline, c);
                         }
                     }
                 }
 
-                Map<String, Map<String, Integer>> imported = new LinkedHashMap<>();
+                Map<String, Map<String, EventResult>> imported = new LinkedHashMap<>();
                 for (int r = 1; r < rows.size(); r++) {
                     Object[] row = rows.get(r);
                     if (row.length == 0) {
@@ -294,18 +303,22 @@ public class MainGUI {
                     if (name.isEmpty()) {
                         continue;
                     }
-                    Map<String, Integer> scores = new LinkedHashMap<>();
-                    for (Map.Entry<Integer, String> col : columnDiscipline.entrySet()) {
-                        int index = col.getKey();
-                        if (index >= row.length) {
+                    Map<String, EventResult> scores = new LinkedHashMap<>();
+                    for (String discipline : disciplines) {
+                        Integer rawCol = rawColumns.get(discipline);
+                        Integer pointsCol = pointsColumns.get(discipline);
+                        if (rawCol == null || pointsCol == null || rawCol >= row.length || pointsCol >= row.length) {
                             continue;
                         }
-                        String value = String.valueOf(row[index]).trim();
-                        if (value.isEmpty()) {
+                        String rawValue = String.valueOf(row[rawCol]).trim();
+                        String pointsValue = String.valueOf(row[pointsCol]).trim();
+                        if (rawValue.isEmpty() || pointsValue.isEmpty()) {
                             continue;
                         }
                         try {
-                            scores.put(col.getValue(), (int) Math.round(Double.parseDouble(value)));
+                            double raw = Double.parseDouble(rawValue);
+                            int points = (int) Math.round(Double.parseDouble(pointsValue));
+                            scores.put(discipline, new EventResult(raw, points));
                         } catch (NumberFormatException ignored) {
                             continue;
                         }

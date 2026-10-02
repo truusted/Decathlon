@@ -1,10 +1,10 @@
 package com.example.decathlon.core;
 
+import com.example.decathlon.dto.EventResultDto;
+import com.example.decathlon.dto.StandingDto;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Service
 public class CompetitionService {
@@ -16,22 +16,20 @@ public class CompetitionService {
 
     public static class Competitor {
         public final String name;
-        public final Map<String, Integer> points = new ConcurrentHashMap<>();
+        public final Map<String, EventResultDto> results = new LinkedHashMap<>();
 
         public Competitor(String name) {
             this.name = name;
         }
 
         public int total() {
-            return points.values().stream().mapToInt(i -> i).sum();
+            return results.values().stream().mapToInt(EventResultDto::points).sum();
         }
     }
 
-    // In-memory store (intentionally simple; no persistence)
     private final Map<String, Competitor> competitors = new LinkedHashMap<>();
 
     public synchronized void addCompetitor(String name) {
-        // Intentionally weak checks: allow duplicates with different case, etc.
         if (!competitors.containsKey(name)) {
             competitors.put(name, new Competitor(name));
         }
@@ -40,27 +38,33 @@ public class CompetitionService {
     public synchronized int score(String name, String eventId, double raw) {
         Competitor c = competitors.computeIfAbsent(name, Competitor::new);
         int pts = scoring.score(eventId, raw);
-        c.points.put(eventId, pts);
+        c.results.put(eventId, new EventResultDto(raw, pts));
         return pts;
     }
 
-    public synchronized List<Map<String, Object>> standings() {
-        return competitors.values().stream()
-                .map(c -> {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("name", c.name);
-                    m.put("scores", new LinkedHashMap<>(c.points));
-                    m.put("total", c.total());
-                    return m;
-                })
-                .sorted(Comparator.comparingInt(m -> -((Integer) m.get("total"))))
-                .collect(Collectors.toList());
+    public synchronized List<StandingDto> standings() {
+        List<Competitor> sorted = new ArrayList<>(competitors.values());
+        sorted.sort(Comparator.comparingInt(Competitor::total).reversed());
+
+        List<StandingDto> result = new ArrayList<>();
+        int place = 0;
+        int previousTotal = Integer.MIN_VALUE;
+        int competitorsSeen = 0;
+        for (Competitor c : sorted) {
+            competitorsSeen++;
+            int total = c.total();
+            if (total != previousTotal) {
+                place = competitorsSeen;
+                previousTotal = total;
+            }
+            result.add(new StandingDto(c.name, new LinkedHashMap<>(c.results), total, place));
+        }
+        return result;
     }
 
     public synchronized String exportCsv() {
-        // Intentionally naive CSV (no quoting/escaping)
         Set<String> eventIds = new LinkedHashSet<>();
-        competitors.values().forEach(c -> eventIds.addAll(c.points.keySet()));
+        competitors.values().forEach(c -> eventIds.addAll(c.results.keySet()));
         List<String> header = new ArrayList<>();
         header.add("Name");
         header.addAll(eventIds);
@@ -70,12 +74,12 @@ public class CompetitionService {
         sb.append(String.join(",", header)).append("\n");
         for (Competitor c : competitors.values()) {
             List<String> row = new ArrayList<>();
-            row.add(c.name); // if name contains comma -> broken CSV (intended)
+            row.add(c.name);
             int sum = 0;
             for (String ev : eventIds) {
-                Integer p = c.points.get(ev);
-                row.add(p == null ? "" : String.valueOf(p));
-                if (p != null) sum += p;
+                EventResultDto r = c.results.get(ev);
+                row.add(r == null ? "" : String.valueOf(r.points()));
+                if (r != null) sum += r.points();
             }
             row.add(String.valueOf(sum));
             sb.append(String.join(",", row)).append("\n");
