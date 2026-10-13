@@ -148,6 +148,65 @@ public class WebUiTest {
         System.out.println("TF 3 SLUTFÖRT MED LYCKAT RESULTAT: Resultatstrukturen är stabil och identifierbar.");
     }
 
+    // TF 4: Verifiera valideringsspärr för max 40 deltagare och resultatregistrering
+    @Test
+    public void testMaxCompetitorsLimit() throws InterruptedException {
+        System.out.println("--- STARTAR TEST: TF 4 - Validering av max 40 deltagare med resultat ---");
+
+        WebElement nameInput = getElement(By.id("name"));
+        WebElement addButton = getElement(By.id("add"));
+        WebElement name2Input = getElement(By.id("name2"));
+        WebElement eventSelectElement = getElement(By.id("event"));
+        WebElement rawInput = getElement(By.id("raw"));
+        WebElement saveButton = getElement(By.id("save"));
+
+        org.openqa.selenium.support.ui.Select eventDropdown =
+                new org.openqa.selenium.support.ui.Select(eventSelectElement);
+
+        // Petlja: Registrujemo takmičara, pa mu odmah upisujemo rezultat i čuvamo
+        for (int i = 1; i <= 41; i++) {
+            String competitorName = "Deltagare " + i;
+
+            // 1. Dodavanje takmičara
+            nameInput.clear();
+            nameInput.sendKeys(competitorName);
+            addButton.click();
+
+            // 2. Unos rezultata za istog takmičara (npr. 100m)
+            name2Input.clear();
+            name2Input.sendKeys(competitorName);
+            eventDropdown.selectByIndex(0); // Bira prvu disciplinu (100m)
+
+            rawInput.clear();
+            rawInput.sendKeys("10.50");
+
+            // 3. Klik na Save score
+            saveButton.click();
+        }
+
+        Thread.sleep(20000);
+
+        // Prebrojavanje redova u tabeli Standings
+        java.util.List<WebElement> rows = driver.findElements(By.xpath("//table//tbody/tr"));
+        int totalCompetitorsInTable = rows.size();
+        System.out.println("Antal deltagare i tabellen efter inmatning: " + totalCompetitorsInTable);
+
+        // Provjera prikaza greške na interfejsu (id="error" iz HTML-a)
+        WebElement errorBanner = driver.findElement(By.id("error"));
+        String errorText = errorBanner.getText();
+        System.out.println("Felmeddelande på sidan: " + (errorText.isEmpty() ? "INGET FELMEDDELANDE" : errorText));
+
+        if (totalCompetitorsInTable > 40) {
+            System.out.println("AVVIKELSE BEKRÄFTAD: Systemet tillåter " + totalCompetitorsInTable + " deltagare utan felmeddelande. Bugg existerar!");
+        } else {
+            System.out.println("Valideringsspärr fungerar som förväntat.");
+        }
+
+        // Test pada ako tabela sadrži više od 40 takmičara
+        assertEquals(40, totalCompetitorsInTable,
+                "Bugg bekräftad: Systemet saknar valideringsspärr och tillåter fler än 40 deltagare!");
+    }
+
     @AfterEach
     public void tearDown() {
         if (driver != null) {
