@@ -24,7 +24,7 @@ public class ScoringService {
             Map.entry("hepHighJump",    new EventDef("hepHighJump",    Type.FIELD, 1.84523,  75.0,  1.348, "cm", 75.7,  270)),
             Map.entry("hepShotPut",     new EventDef("hepShotPut",     Type.FIELD, 56.0211,  1.5,   1.05,  "m",  5,     100)),
             Map.entry("hep200m",        new EventDef("hep200m",        Type.TRACK, 4.99087,  42.5,  1.81,  "s",  14,    42.08)),
-            Map.entry("hepLongJump",    new EventDef("hepLongJump",    Type.FIELD, 0.188807, 210.0, 1.41,  "cm", 0.01,  400)),
+            Map.entry("hepLongJump",    new EventDef("hepLongJump",    Type.FIELD, 0.188807, 210.0, 1.41,  "cm", 0.01,  1000)),
             Map.entry("hepJavelinThrow",new EventDef("hepJavelinThrow",Type.FIELD, 15.9803,  3.8,   1.04,  "m",  0.01,  100)),
             Map.entry("hep800m",        new EventDef("hep800m",        Type.TRACK, 0.11193,  254.0, 1.88,  "s",  70,    250.79))
     );
